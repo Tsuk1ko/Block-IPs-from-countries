@@ -57,18 +57,26 @@ function unblock_ipset {
 	echo "Unblock IPs from $GEOIP successfully!"
 }
 
+# 查看封禁列表
+function block_list {
+	iptables -L | grep match-set
+}
+
 # 打印帮助信息
 function print_help {
-	echo "Usage: bash block-ips.sh <option> <GeoIP>"
+	echo
+	echo "Usage: bash block-ips.sh <option> [GeoIP]"
 	echo "Options:"
-	echo -e " -a\t\tAdd or update the ipset of a country"
-	echo -e "   \t\tYou could know what GeoIP you can use in"
-	echo -e "   \t\thttp://www.ipdeny.com/ipblocks/data/countries/"
-	echo -e "   \t\tNotice: GeoIP must be LOWERCACE"
-	echo -e " -b\t\tBlock IPs from the country you specified,"
-	echo -e "   \t\taccording to the ipset you add with -a"
-	echo -e " -u\t\tUnblock IPs from a country"
-	echo -e " -h, --help\tShow this help message and exit"
+	echo -e "\t-a <GeoIP>\tAdd or update the ipset of a country"
+	echo -e "\t  \t\tYou could know what GeoIP you can use in"
+	echo -e "\t  \t\thttp://www.ipdeny.com/ipblocks/data/countries/"
+	echo -e "\t  \t\tNotice: GeoIP must be LOWERCACE"
+	echo -e "\t-b <GeoIP>\tBlock IPs from the country you specified,"
+	echo -e "\t  \t\taccording to the ipset you add with -a"
+	echo -e "\t-u <GeoIP>\tUnblock IPs from a country"
+	echo -e "\t-l \t\tList the countries which are blocked"
+	echo -e "\t-h, --help\tShow this help message and exit"
+	echo
 	exit 0
 }
 
@@ -76,7 +84,6 @@ function print_help {
 function check_arg {
 	if [ -z $1 ]; then
 		echo "Missing mandatory argument!"
-		echo
 		print_help
 	fi
 }
@@ -90,6 +97,7 @@ if [ -z "$test" ]; then
 	echo -e "\tapt-get install -y ipset"
 	echo -e "\tor"
 	echo -e "\tyum install -y ipset"
+	echo
 	exit 1
 fi
 
@@ -106,6 +114,7 @@ case $1 in
 -u) check_arg $2
 	unblock_ipset $2
 ;;
+-l) block_list;;
 -h) print_help;;
 --help) print_help;;
 *)	echo "Option error!"
