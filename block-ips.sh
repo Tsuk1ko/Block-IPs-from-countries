@@ -14,6 +14,11 @@ function add_ipset {
 		echo "Download success."
 	else
 		echo "Failed to download data. Please check your input."
+		echo
+		echo "You could know what GeoIP you can use in"
+		echo "http://www.ipdeny.com/ipblocks/data/countries/"
+		echo
+		echo "Notice: GeoIP must be LOWERCACE"
 		exit 1
 	fi
 	# 判断是否已经有此set
@@ -118,7 +123,6 @@ case $1 in
 -h) print_help;;
 --help) print_help;;
 *)	echo "Option error!"
-	echo
 	print_help
 ;;
 esac
