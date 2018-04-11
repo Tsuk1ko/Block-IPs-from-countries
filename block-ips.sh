@@ -11,7 +11,7 @@ function add_ipset {
 	CCODE=`typeset -u $1`
 	TMPFILE=$(mktemp /tmp/bi.XXXXXXXXXX)
 	# 没有列表就下载
-	if [ -s $DAL ]; then
+	if [ ! -s $DAL ]; then
 		echo "Downloading IPs data..."
 		curl 'http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest' > $DAL
 	fi
