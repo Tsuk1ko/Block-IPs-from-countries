@@ -8,7 +8,7 @@ DAL="delegated-apnic-latest.txt"
 # 添加/更新ipset
 function add_ipset {
 	# 国家代码
-	CCODE=`typeset -u $1`
+	CCODE=`echo $1 | tr 'a-z' 'A-Z'`
 	TMPFILE=$(mktemp /tmp/bi.XXXXXXXXXX)
 	# 没有列表就下载
 	if [ ! -s $DAL ]; then
@@ -30,15 +30,17 @@ function add_ipset {
 		echo "or"
 		echo "https://www.iso.org/obp/ui/"
 		echo
+		echo "Country code is not case sensitive."
+		echo
 		exit 1
 	fi
 	# 判断是否已经有此set
 	lookuplist=`ipset list | grep "Name:" | grep $CCODE"ip"`
 	if [ -n "$lookuplist" ]; then
-		echo "Updating ipset... It may take a long time, please holdon."
+		echo "Updating [$CCODE] ipset... It may take a long time, please holdon."
 		ipset flush $CCODE"ip"
 	else
-		echo "Creating ipset... It may take a long time, please holdon."
+		echo "Creating [$CCODE] ipset... It may take a long time, please holdon."
 		ipset -N $CCODE"ip" hash:net
 	fi
 	# 加入数据
@@ -56,9 +58,9 @@ function block_ipset {
 	if [ -n "$lookuplist" ]; then
 		iptables -I INPUT -p tcp -m set --match-set $CCODE"ip" src -j DROP
 		iptables -I INPUT -p udp -m set --match-set $CCODE"ip" src -j DROP
-		echo "Block IPs from $CCODE successfully!"
+		echo "Block IPs from [$CCODE] successfully!"
 	else
-		echo "Failed. You have not added $CCODE ipset yet."
+		echo "Failed. You have not added [$CCODE] ipset yet."
 		echo "Please use option -a to add it first."
 		exit 1
 	fi
@@ -70,7 +72,7 @@ function unblock_ipset {
 	CCODE=$1
 	iptables -D INPUT -p tcp -m set --match-set $CCODE"ip" src -j DROP
 	iptables -D INPUT -p udp -m set --match-set $CCODE"ip" src -j DROP
-	echo "Unblock IPs from $CCODE successfully!"
+	echo "Unblock IPs from [$CCODE] successfully!"
 }
 
 # 查看封禁列表
@@ -84,13 +86,13 @@ function print_help {
 	echo "Usage: bash block-ips.sh <option> [country code]"
 	echo "Options:"
 	echo -e "  -a <country code>\tAdd or update the ipset of a country"
-	echo -e "    \t\t\tYou could know what country code you can use in"
+	echo -e "    \t\t\tYou could know what country code you can use (alpha-2 code) in"
 	echo -e "    \t\t\thttp://www.ipdeny.com/ipblocks/data/countries/"
 	echo -e "    \t\t\tor https://www.iso.org/obp/ui/"
-	echo -e "    \t\t\tNotice: If you want to update IP data, please"
-	echo -e "    \t\t\tdelete file $DAL first"
-	echo -e "  -b <country code>\tBlock IPs from the country you specified,"
-	echo -e "    \t\t\taccording to the ipset you add with -a"
+	echo -e "    \t\t\tNotice: If you want to update IP data, please delete file"
+	echo -e "    \t\t\t$DAL first"
+	echo -e "  -b <country code>\tBlock IPs from the country you specified, according"
+	echo -e "    \t\t\tto the ipset you add with -a"
 	echo -e "  -u <country code>\tUnblock IPs from a country"
 	echo -e "  -l \t\t\tList the countries which are blocked"
 	echo -e "  -h, --help\t\tShow this help message and exit"
