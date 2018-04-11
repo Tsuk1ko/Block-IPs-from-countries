@@ -8,9 +8,11 @@ function add_ipset {
 	# 国家代码
 	GEOIP=$1
 	echo "Downloading IPs data..."
-	wget -P /tmp http://www.ipdeny.com/ipblocks/data/countries/$GEOIP.zone 2> /dev/null
+	#wget -P /tmp http://www.ipdeny.com/ipblocks/data/countries/$GEOIP.zone 2> /dev/null
+	TMPFILE=$(mktemp /tmp/bi.XXXXXXXXXX)
+	curl 'http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest' | grep ipv4 | grep -i $GEOIP | awk -F\| '{ printf("%s/%d\n", $4, 32-log($5)/log(2)) }' > $TMPFILE
 	# 检查下载是否成功
-	if [ -f "/tmp/"$GEOIP".zone" ]; then
+	if [ -s $TMPFILE ]; then
 		echo "Download success."
 	else
 		echo "Failed to download data. Please check your input."
@@ -31,8 +33,8 @@ function add_ipset {
 		ipset -N $GEOIP"ip" hash:net
 	fi
 	# 加入数据
-	for i in `cat /tmp/$GEOIP.zone`; do ipset -A $GEOIP"ip" $i; done
-	rm -f /tmp/$GEOIP.zone
+	for i in `cat $TMPFILE`; do ipset -A $GEOIP"ip" $i; done
+	rm -f $TMPFILE
 	echo "Done!"
 }
 
