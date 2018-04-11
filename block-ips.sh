@@ -3,51 +3,64 @@
 # https://lolico.moe
 # https://github.com/YKilin/Block-IPs-from-countries
 
+DAL="delegated-apnic-latest.txt"
+
 # 添加/更新ipset
 function add_ipset {
 	# 国家代码
-	GEOIP=$1
-	echo "Downloading IPs data..."
-	wget -P /tmp http://www.ipdeny.com/ipblocks/data/countries/$GEOIP.zone 2> /dev/null
-	# 检查下载是否成功
-	if [ -f "/tmp/"$GEOIP".zone" ]; then
-		echo "Download success."
+	CCODE=`echo $1 | tr 'a-z' 'A-Z'`
+	TMPFILE=$(mktemp /tmp/bi.XXXXXXXXXX)
+	# 没有列表就下载
+	if [ ! -s $DAL ]; then
+		echo "Downloading IPs data..."
+		curl 'http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest' > $DAL
+	fi
+	# 获取IP段
+	cat $DAL | grep ipv4 | grep $CCODE | awk -F\| '{ printf("%s/%d\n", $4, 32-log($5)/log(2)) }' > $TMPFILE
+	# 检查是否成功
+	if [ -s $TMPFILE ]; then
+		echo "Get IP data success."
 	else
-		echo "Failed to download data. Please check your input."
 		echo
-		echo "You could know what GeoIP you can use in"
-		echo "http://www.ipdeny.com/ipblocks/data/countries/"
+		echo "Failed to get IP data. Please check your input."
 		echo
-		echo "Notice: GeoIP must be LOWERCACE"
+		echo "You could know what country code you can use in"
+		echo
+		echo "http://doc.chacuo.net/iso-3166-1"
+		echo "or"
+		echo "https://www.iso.org/obp/ui/"
+		echo
+		echo "Country code is not case sensitive."
+		echo
 		exit 1
 	fi
 	# 判断是否已经有此set
-	lookuplist=`ipset list | grep "Name:" | grep $GEOIP"ip"`
+	lookuplist=`ipset list | grep "Name:" | grep $CCODE"ip"`
 	if [ -n "$lookuplist" ]; then
-		echo "Updating ipset... It may take a long time, please holdon."
-		ipset flush $GEOIP"ip"
+		echo "Updating [$CCODE] ipset... It may take a long time, please holdon."
+		ipset flush $CCODE"ip"
 	else
-		echo "Creating ipset... It may take a long time, please holdon."
-		ipset -N $GEOIP"ip" hash:net
+		echo "Creating [$CCODE] ipset... It may take a long time, please holdon."
+		ipset -N $CCODE"ip" hash:net
 	fi
 	# 加入数据
-	for i in `cat /tmp/$GEOIP.zone`; do ipset -A $GEOIP"ip" $i; done
-	rm -f /tmp/$GEOIP.zone
+	for i in `cat $TMPFILE`; do ipset -A $CCODE"ip" $i; done
+	rm -f $TMPFILE
 	echo "Done!"
 }
 
 # 封禁ip
 function block_ipset {
 	# 国家代码
-	GEOIP=$1
+	CCODE=$1
 	# 判断是否已经有此set
-	lookuplist=`ipset list | grep "Name:" | grep $GEOIP"ip"`
+	lookuplist=`ipset list | grep "Name:" | grep $CCODE"ip"`
 	if [ -n "$lookuplist" ]; then
-		iptables -I INPUT -p tcp -m set --match-set $GEOIP"ip" src -j DROP
-		iptables -I INPUT -p udp -m set --match-set $GEOIP"ip" src -j DROP
-		echo "Block IPs from $GEOIP successfully!"
+		iptables -I INPUT -p tcp -m set --match-set $CCODE"ip" src -j DROP
+		iptables -I INPUT -p udp -m set --match-set $CCODE"ip" src -j DROP
+		echo "Block IPs from [$CCODE] successfully!"
 	else
-		echo "Failed. You have not added $GEOIP ipset yet."
+		echo "Failed. You have not added [$CCODE] ipset yet."
 		echo "Please use option -a to add it first."
 		exit 1
 	fi
@@ -56,10 +69,10 @@ function block_ipset {
 # 解封ip
 function unblock_ipset {
 	# 国家代码
-	GEOIP=$1
-	iptables -D INPUT -p tcp -m set --match-set $GEOIP"ip" src -j DROP
-	iptables -D INPUT -p udp -m set --match-set $GEOIP"ip" src -j DROP
-	echo "Unblock IPs from $GEOIP successfully!"
+	CCODE=$1
+	iptables -D INPUT -p tcp -m set --match-set $CCODE"ip" src -j DROP
+	iptables -D INPUT -p udp -m set --match-set $CCODE"ip" src -j DROP
+	echo "Unblock IPs from [$CCODE] successfully!"
 }
 
 # 查看封禁列表
@@ -70,17 +83,19 @@ function block_list {
 # 打印帮助信息
 function print_help {
 	echo
-	echo "Usage: bash block-ips.sh <option> [GeoIP]"
+	echo "Usage: bash block-ips.sh <option> [country code]"
 	echo "Options:"
-	echo -e "\t-a <GeoIP>\tAdd or update the ipset of a country"
-	echo -e "\t  \t\tYou could know what GeoIP you can use in"
-	echo -e "\t  \t\thttp://www.ipdeny.com/ipblocks/data/countries/"
-	echo -e "\t  \t\tNotice: GeoIP must be LOWERCACE"
-	echo -e "\t-b <GeoIP>\tBlock IPs from the country you specified,"
-	echo -e "\t  \t\taccording to the ipset you add with -a"
-	echo -e "\t-u <GeoIP>\tUnblock IPs from a country"
-	echo -e "\t-l \t\tList the countries which are blocked"
-	echo -e "\t-h, --help\tShow this help message and exit"
+	echo -e "  -a <country code>\tAdd or update the ipset of a country"
+	echo -e "    \t\t\tYou could know what country code you can use (alpha-2 code) in"
+	echo -e "    \t\t\thttp://www.ipdeny.com/ipblocks/data/countries/"
+	echo -e "    \t\t\tor https://www.iso.org/obp/ui/"
+	echo -e "    \t\t\tNotice: If you want to update IP data, please delete file"
+	echo -e "    \t\t\t$DAL first"
+	echo -e "  -b <country code>\tBlock IPs from the country you specified, according"
+	echo -e "    \t\t\tto the ipset you add with -a"
+	echo -e "  -u <country code>\tUnblock IPs from a country"
+	echo -e "  -l \t\t\tList the countries which are blocked"
+	echo -e "  -h, --help\t\tShow this help message and exit"
 	echo
 	exit 0
 }
