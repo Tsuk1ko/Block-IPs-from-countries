@@ -3,14 +3,15 @@
 # https://lolico.moe
 # https://github.com/YKilin/Block-IPs-from-countries
 
+DAL="delegated-apnic-latest.txt"
+
 # 添加/更新ipset
 function add_ipset {
 	# 国家代码
 	CCODE=`typeset -u $1`
 	TMPFILE=$(mktemp /tmp/bi.XXXXXXXXXX)
-	DAL="delegated-apnic-latest.txt"
 	# 没有列表就下载
-	if [ -s $TMPFILE ]; then
+	if [ -s $DAL ]; then
 		echo "Downloading IPs data..."
 		curl 'http://ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest' > $DAL
 	fi
@@ -82,18 +83,17 @@ function print_help {
 	echo
 	echo "Usage: bash block-ips.sh <option> [country code]"
 	echo "Options:"
-	echo -e "\t-a <country code>\tAdd or update the ipset of a country"
-	echo -e "\t  \t\tYou could know what country code you can use in"
-	echo -e "\t  \t\thttp://www.ipdeny.com/ipblocks/data/countries/"
-	echo -e "\t  \t\tor"
-	echo -e "\t  \t\torhttps://www.iso.org/obp/ui/"
-	echo -e "\t  \t\tNotice: If you want to update IP data, please"
-	echo -e "\t  \t\todelete file $DAL first"
-	echo -e "\t-b <country code>\tBlock IPs from the country you specified,"
-	echo -e "\t  \t\taccording to the ipset you add with -a"
-	echo -e "\t-u <country code>\tUnblock IPs from a country"
-	echo -e "\t-l \t\tList the countries which are blocked"
-	echo -e "\t-h, --help\tShow this help message and exit"
+	echo -e "  -a <country code>\tAdd or update the ipset of a country"
+	echo -e "    \t\t\tYou could know what country code you can use in"
+	echo -e "    \t\t\thttp://www.ipdeny.com/ipblocks/data/countries/"
+	echo -e "    \t\t\tor https://www.iso.org/obp/ui/"
+	echo -e "    \t\t\tNotice: If you want to update IP data, please"
+	echo -e "    \t\t\tdelete file $DAL first"
+	echo -e "  -b <country code>\tBlock IPs from the country you specified,"
+	echo -e "    \t\t\taccording to the ipset you add with -a"
+	echo -e "  -u <country code>\tUnblock IPs from a country"
+	echo -e "  -l \t\t\tList the countries which are blocked"
+	echo -e "  -h, --help\t\tShow this help message and exit"
 	echo
 	exit 0
 }
